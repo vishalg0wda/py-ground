@@ -16,14 +16,14 @@ It so far includes a script for extracting pages from a PDF file with optional t
 
 - Python 3.9 or higher
 - `pymupdf` library
-- `pypdf` library
 
 #### Installation
 
 To install the required dependencies, run:
 
 ```sh
-pip install pymupdf pypdf
+uv init
+uv sync
 ```
 
 #### Usage

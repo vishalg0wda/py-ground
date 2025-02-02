@@ -1,0 +1,83 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.9"
+# dependencies = [
+#     "pymupdf",
+# ]
+# ///
+from argparse import ArgumentParser, Namespace
+import pymupdf
+from pathlib import Path
+
+parser = ArgumentParser(
+  prog='pdf-cherry-pick',
+  description='Extract pages from a PDF file(with optional text highlighting)'
+)
+parser.add_argument(
+  'file_path',
+  type=Path,
+  help='Path to the PDF file'
+)
+parser.add_argument(
+  'page_numbers',
+  type=int,
+  nargs='+',
+  help='Page numbers to extract'
+)
+parser.add_argument(
+  '-H', '--highlight-text',
+  type=str,
+  action='append',
+  help='Text to highlight in the extracted pages. Repeat this option to highlight multiple texts.'
+)
+parser.add_argument(
+  '-o', '--output',
+  type=Path,
+  default='./output.pdf',
+  help='Output file path. Default is ./output.pdf'
+)
+parser.add_argument(
+  '-s', '--output-suffix',
+  type=str,
+  help='Suffix to append to the output file name. File will be created'
+  ' in the current directory with the suffix appended to the original '
+  'file name.'
+)
+
+def resolve_output_path(args: Namespace) -> Path:
+  if args.output_suffix:
+    return f"./{args.file_path.stem}-{args.output_suffix}.pdf"
+  return args.output
+
+def pad_highlight_rect(rect):
+  # Pad the rectangle by 1pt on all sides
+  return pymupdf.Quad(
+    rect[0] - 1,
+    rect[1] - 1,
+    rect[2] + 1,
+    rect[3] + 1
+  )
+
+def cherry_pick(args: Namespace) :
+  with pymupdf.open(args.file_path) as doc:
+    print(f"{args.file_path} has {doc.page_count} pages")
+    output_path = resolve_output_path(args)
+    print(f"Extracting pages {args.page_numbers} to {output_path}")
+    # Decrement page numbers by 1 as the pages are 0-indexed
+    doc.select([i - 1 for i in args.page_numbers])
+    if args.highlight_text:
+      for page in doc:
+        for highlight_text in args.highlight_text:
+          instances = page.search_for(highlight_text, quads=True)
+          for inst in instances:
+            print(f"Highlighting '{highlight_text}' on page {page.number + 1}")
+            page.add_highlight_annot(pad_highlight_rect(inst))
+    doc.save(output_path)
+    print(f"Done!")
+
+def main():
+  args = parser.parse_args()
+  cherry_pick(args)
+
+if __name__ == "__main__":
+    main()
